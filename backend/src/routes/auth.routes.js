@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt'
 import pool from '../config/database.js'
 import jwt from 'jsonwebtoken'
 import { authConfig } from '../config/auth.js'
+import { requireAuth } from '../middlewares/auth.middlewares.js'
+
 
 const router = Router()
 
