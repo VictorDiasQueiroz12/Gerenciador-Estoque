@@ -72,4 +72,57 @@ router.post('/register', async (req, res) => {
   }
 })
 
+router.post('/login', async (req, res) => {
+  const {email, password} = req.body ?? {}
+
+  if(typeof email !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({
+      message: "E=mail e senha são obrigatórios.",
+    })
+  }
+
+  const normalizedEmail = email.trim().toLowerCase()
+
+  if(!normalizedEmail || !password){
+    return res.status(400).json({
+      message: "E-mail e senha são obrigatórios.",
+    })
+  }
+
+  try{
+    const result = await pool.query('SELECT id, name, email, password_hash FROM users WHERE email = $1', [normalizedEmail])
+
+    const user = result.rows[0]
+
+    if(!user){
+      return res.status(401).json({
+        message: "E-mail ou senha inválidos.",
+      })
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.password_hash) //compara a senha ao hash salvo
+
+    if(!passwordMatches){
+      return res.status(401).json({
+        message: "E-mail ou senha inválidos.",
+      })
+    }
+
+    return res.status(200).json({
+      message: "Credenciais válidas. A sessão ainda não foi criada.",
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    })
+  } catch (error){
+    console.error("Erro ao realizar login:", error.message)
+
+    return res.status(500).json({
+      message: "Não foi possível realizar o login."
+    })
+  }
+})
+
 export default router
