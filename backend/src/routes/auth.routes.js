@@ -148,4 +148,28 @@ router.post('/login', async (req, res) => {
   }
 })
 
+router.get('/me', requireAuth, async (req, res) => {
+  try{
+    const result = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [req.auth.userId])
+
+    const user = result.rows[0]
+
+    if(!user){
+      return res.status(401).json({
+        message: "Usuário da sessão não encontrado."
+      })
+    }
+
+    return res.status(200).json({
+      data: user,
+    })
+  } catch (error) {
+    console.error("Erro ao consultar usuário:", error.message)
+
+    return res.status(500).json({
+      message: "Não foi possível consultar o usuário."
+    })
+  } 
+})
+
 export default router

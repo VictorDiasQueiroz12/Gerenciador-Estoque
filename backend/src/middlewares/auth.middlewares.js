@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import { authConfig } from '../config/auth'
+import { authConfig } from '../config/auth.js'
 
 export function requireAuth(req, res, next) {
     const token = req.cookies?.access_token
