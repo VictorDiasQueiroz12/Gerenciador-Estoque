@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import bcrypt from 'bcrypt'
 import pool from '../config/database.js'
+import jwt from 'jsonwebtoken'
+import { authConfig } from '../config/auth.js'
 
 const router = Router()
 
@@ -108,13 +110,32 @@ router.post('/login', async (req, res) => {
       })
     }
 
+    const token = jwt.sign //cria um token assinado
+    (
+      {},
+      authConfig.jwtSecret,
+      {
+        subject: user.id, //identifica o usuario no campo sub do token
+        expiresIn: authConfig.jwtExpiresIn,
+        algorithm: 'HS256', //define o algoritmo da assinatura
+      }
+    )
+
+    res.cookie('access_token', token, {
+      httpOnly: true, //impede a leitura do cookie pelo JS do navegador
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax', //restringe o envio do cookie em alguns acessos vindos de outros sites
+      maxAge: 60 * 60 * 1000, //duração do cookie em milessegundos = 1h
+      path: '/' //disponibiliza o cookie em todas as rotas da API
+    })
+
     return res.status(200).json({
-      message: "Credenciais válidas. A sessão ainda não foi criada.",
-      data: {
+      message: "Login realizado com sucesso.",
+      data:{
         id: user.id,
         name: user.name,
         email: user.email,
-      },
+      }
     })
   } catch (error){
     console.error("Erro ao realizar login:", error.message)
