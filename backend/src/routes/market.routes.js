@@ -71,4 +71,29 @@ router.post('/', requireAuth, async (req, res) => {
     }
 })
 
+router.get('/', requireAuth, async (req, res) => {
+    try{
+        const result = await pool.query(`SELECT
+          markets.id,
+          markets.name,
+          market_members.role
+       FROM markets
+       JOIN market_members
+         ON market_members.market_id = markets.id
+       WHERE market_members.user_id = $1
+         AND market_members.status = 'active'
+       ORDER BY markets.name, markets.id`, [req.auth.userId])
+
+       return res.status(200).json({
+        data: result.rows,
+       })
+    } catch (error){
+        console.error("Erro ao listar mercados:", error.message)
+
+        return res.status(500).json({
+            message: "Não foi possível listar os mercados."
+        })
+    }
+})
+
 export default router
