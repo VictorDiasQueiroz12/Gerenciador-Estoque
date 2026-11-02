@@ -52,5 +52,27 @@ router.post('/', requireAuth, async (req, res) => {
                 message: "Você já participa deste mercado."
             })
         }
+
+        //ON CONFLICT ... DO NOTHING usa o índice único que criamos: se já houver uma solicitação pendente, não insere outra. Nesse caso, rowCount será zero.
+        const result = await pool.query(`INSERT INTO join_requests (market_id, user_id) VALUES ($1, $2) ON CONFLICT (market_id, user_id) WHERE status = 'pending' DO NOTHING RETURNING id, market_id, status, created_at`, [market.id, req.auth.userId])
+
+        if(result.rowCount === 0){
+            return res.status(409).json({
+                message: "Você já tem uma solicitação pendente neste mercado."
+            })
+        }
+
+        return res.status(201).json({
+            message: "Solicitação enviada. Aguarde aprovação.",
+            data: result.rows[0],
+        })
+    }catch(error){
+        console.error("Erro ao solicitar acesso:", error.message)
+
+        return res.status(500).json({
+            message: "Não foi possível solicitar acesso."
+        })
     }
 })
+
+export default router

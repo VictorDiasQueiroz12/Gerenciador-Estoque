@@ -2,6 +2,7 @@ import express from 'express'
 import authRoutes from './routes/auth.routes.js'
 import cookieParser from 'cookie-parser'
 import marketRoutes from './routes/market.routes.js'
+import joinRequestRoutes from './routes/join-request.routes.js'
 
 const app = express()
 
@@ -10,6 +11,7 @@ app.use(cookieParser())
 
 app.use('/auth', authRoutes)
 app.use('/markets', marketRoutes)
+app.use('/join-requests', joinRequestRoutes)
 
 app.get('/health', (req, res) =>{
     res.status(200).json({
