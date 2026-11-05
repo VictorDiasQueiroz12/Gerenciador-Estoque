@@ -96,4 +96,49 @@ router.get('/', requireAuth, async (req, res) => {
     }
 })
 
+router.get('/:marketId/join-requests', requireAuth, async (req, res) => {
+    const {marketId} = req.params
+
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(marketId)){
+        return res.status(400).json({
+            message: "ID do mercado inválido."
+        })
+    }
+
+    try{
+        const memberResult = await pool.query(`SELECT role FROM market_members WHERE market_id = $1 AND user_id = $2 AND status = 'active'`,[marketId, req.auth.userId])
+
+        const member = memberResult.rows[0]
+
+        if(!member || !['owner', 'admin'].includes(member.role)){
+            return res.status(403).json({
+                message: "Você não tem permissão para consultar as solicitações."
+            })
+        }
+
+        const result = await pool.query(`SELECT
+          join_requests.id,
+          join_requests.user_id,
+          users.name,
+          users.email,
+          join_requests.status,
+          join_requests.created_at
+       FROM join_requests
+       JOIN users ON users.id = join_requests.user_id
+       WHERE join_requests.market_id = $1
+         AND join_requests.status = 'pending'
+       ORDER BY join_requests.created_at, join_requests.id`, [marketId])
+
+       return res.status(200).json({
+        data: result.rows,
+       })
+    }catch(error){
+        console.error("Erro ao listar solicitações: ", error.message)
+
+        return res.status(500).json({
+            message: "Não foi possível listar as solicitações."
+        })
+    }
+})
+
 export default router
