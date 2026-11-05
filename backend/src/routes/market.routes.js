@@ -141,4 +141,45 @@ router.get('/:marketId/join-requests', requireAuth, async (req, res) => {
     }
 })
 
+router.patch('/:marketId/join-requests/:requestId', requireAuth ,async (req, res) => {
+    const{marketId, requestId} = req.params
+    const {status} = req.body ?? {}
+
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+    if(!uuidPattern.test(marketId) || !uuidPattern.test(requestId)){
+        return res.status(400).json({
+            message: "ID do mercado ou da solicitação inválido."
+        })
+    }
+
+    if(!['approved', 'rejected'].includes(status)){
+        return res.status(400).json({
+            message: "Informe approved ou rejected."
+        })
+    }
+
+    let client
+
+    try{
+        client = await pool.connect()
+        await client.query('BEGIN')
+
+        const marketResult = await pool.query('SELECT id FROM markets WHERE id = $1 FOR UPDATE', [marketId])
+
+        const memberResult = await pool.query(`SELECT role FROM market_members WHERE market_id = $1 AND user_id = $2 AND status = 'active'`, [marketId, req.auth.userId])
+
+        const reviwer = memberResult.rows[0]
+
+        if(!marketResult.rowCount || !reviwer || !['owner', 'admin'].includes(reviwer.roles)){
+            await client.query('ROLLBACK')
+
+            return res.status(403).json({
+                message: "Você não tem permissão para analisar solicitações."
+            })
+        }
+
+    }catch(error){}
+})
+
 export default router
