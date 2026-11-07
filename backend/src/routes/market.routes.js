@@ -179,7 +179,66 @@ router.patch('/:marketId/join-requests/:requestId', requireAuth ,async (req, res
             })
         }
 
-    }catch(error){}
+        const requestResult = await client.query('SELECT id, user_id, status FROM join_requests WHERE id = $1 AND market_id = $2 FOR UPDATE', [requestId, marketId])
+
+        const joinRequest = requestResult.rows[0]
+
+        if(!joinRequest){
+            await client.query('ROLLBACK')
+
+            return res.status(404).json({
+                message: "Solicitação não encontrada."
+            })
+        }
+
+        if(joinRequest.status !== 'pending'){
+            await client.query('ROLLBACK')
+
+            return res.status(409).json({
+                message: "Esta solicitação já foi analisada."
+            })
+        }
+
+        if (status === 'approved') {
+        const membershipResult = await client.query(
+        `INSERT INTO market_members (market_id, user_id, role) VALUES ($1, $2, 'member') ON CONFLICT (market_id, user_id) DO UPDATE SET role = 'member', status = 'active', updated_at = CURRENT_TIMESTAMP WHERE market_members.status IN ('removed', 'left') RETURNING id`, [marketId, joinRequest.user_id]);
+
+        if (!membershipResult.rowCount) {
+        await client.query('ROLLBACK');
+
+        return res.status(409).json({
+            message: "O usuário já está ativo ou está banido."});
+            }   
+        }
+
+        const result = await client.query(`UPDATE join_requests SET status = $1, reviewed_by = $2, reviewed_at = CURRENT_TIMESTAMP WHERE id = $3 AND market_id = $4 RETURNING id, market_id, user_id, status, reviewed_at`, [status, req.auth.userId, requestId, marketId])
+
+        await client.query('COMMIT')
+
+        return res.status(200).json({
+            message:
+                status === 'aproved'
+                ? "Solicitação aprovada."
+                : "Solicitação recusada.",
+            data: result.rows[0]
+        })
+    }catch(error){
+        if(client){
+            try{
+                await client.query('ROLLBACK')
+            }catch(rollbackError){
+                console.error("Erro no rollback:", rollbackError.message)
+            }
+        }
+
+        console.error("Erro ao analisar solicitação:", error.message)
+
+        return res.status(500).json({
+            message: "Não foi possível analisar a solicitação."
+        })
+    }finally{
+        client?.release()
+    }
 })
 
 export default router

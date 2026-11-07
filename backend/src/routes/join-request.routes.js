@@ -75,4 +75,26 @@ router.post('/', requireAuth, async (req, res) => {
     }
 })
 
+router.get("/me", requireAuth, async (req, res) => {
+    try{
+        const result = await pool.query(`SELECT
+          jr.id,
+          jr.market_id,
+          m.name AS market_name,
+          jr.status,
+          jr.created_at,
+          jr.reviewed_at
+       FROM join_requests AS jr
+       JOIN markets AS m ON m.id = jr.market_id
+       WHERE jr.user_id = $1
+       ORDER BY jr.created_at DESC, jr.id`, [req.auth.userId])
+    }catch(error){
+        console.error("Erro ao consultar minhas solicitações:", error.message)
+
+        return res.status(500).json({
+            message: "Não foi possível consultar suas solicitações."
+        })
+    }
+})
+
 export default router
