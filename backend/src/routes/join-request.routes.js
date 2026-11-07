@@ -88,6 +88,10 @@ router.get("/me", requireAuth, async (req, res) => {
        JOIN markets AS m ON m.id = jr.market_id
        WHERE jr.user_id = $1
        ORDER BY jr.created_at DESC, jr.id`, [req.auth.userId])
+
+       return res.status(200).json({
+        data: result.rows
+       })
     }catch(error){
         console.error("Erro ao consultar minhas solicitações:", error.message)
 
