@@ -241,4 +241,22 @@ router.patch('/:marketId/join-requests/:requestId', requireAuth ,async (req, res
     }
 })
 
+router.patch('/:marketId/members/:userId/role', requireAuth, async (req,res) => {
+    const {marketId, userId} = req.params
+    const {role} = req.body ?? {}
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+    if(!uuidPattern.test(marketId) || !uuidPattern.test(userId)){
+        return res.status(400).json({
+            message: "ID do mercado ou do usuário inválido."
+        })
+    }
+
+    if(!['admin', 'member'].includes(role)){
+        return res.status(400).json({
+            message: "Informe admin ou member."
+        })
+    }
+})
+
 export default router
