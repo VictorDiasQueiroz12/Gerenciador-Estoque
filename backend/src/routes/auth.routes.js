@@ -185,4 +185,49 @@ router.post('/logout', (req, res) =>{
   })
 })
 
+router.get('/:marketId/members', requireAuth, async (req, res) => {
+  const {marketId} = req.params
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+  if(!uuidPattern.test(marketId)){
+    return res.status(400).json({
+      message: "ID do mercado inválido."
+    })
+  }
+
+  try{
+    const result = await pool.query(`SELECT
+          u.id AS user_id,
+          u.name,
+          u.email,
+          member.role,
+          member.created_at
+       FROM market_members AS viewer
+       JOIN market_members AS member
+         ON member.market_id = viewer.market_id
+        AND member.status = 'active'
+       JOIN users AS u ON u.id = member.user_id
+       WHERE viewer.market_id = $1
+         AND viewer.user_id = $2
+         AND viewer.status = 'active'
+         AND viewer.role IN ('owner', 'admin')
+       ORDER BY u.name, u.id`, [marketId, req.auth.userId])
+
+       if(result.rowCount === 0){
+        return res.status(403).json({
+          message: "Você não tem permissão para consultar a equipe."
+        })
+       }
+       return res.status(200).json({
+          data: result.rows
+        })
+  }catch(error){
+    console.error("Erro ao listar membros:", error.message)
+
+    return res.status(500).json({
+      message: "Não foi possível consultar a equipe."
+    })
+  }
+})
+
 export default router
